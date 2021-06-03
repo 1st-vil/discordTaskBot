@@ -32,22 +32,15 @@ personalCommands=[
 
 #-------------------------#
 
-def connect_redis(db_id=0):
+def connect_redis(db_id):
     return redis.from_url(url=os.environ.get('REDIS_URL'),decode_responses=True,db=db_id)
-def get_db_id(user_id):
-    db0=connect_redis()
-    keys=db0.keys()
-    if user_id in keys:
-        return db0.get(user_id)
-    else:
-        return -1
-def get_empty_db_id():
-    db0=connect_redis()
-    ids=[int(db0.get(key)) for key in db0.keys()]
-    for i in range(1,16):#合計16個まででやめときます
-        if i not in ids:
-            return i
-    return -1
+
+def delete_all_keys(user_id):
+    db1=connect_redis(1)
+    keys=db1.keys()
+    for inner_key in keys:
+        if inner_key[0:len(user_id)]==user_id:
+            db1.delete(inner_key)
 
 #-------------------------#
 
@@ -71,22 +64,22 @@ async def on_message(message):
             res+=command+' : '+description+'\n'
         await message.channel.send(res)
     elif txt[0]=='/echo':
-        await message.channel.send(' '.join(txt[1:]))
+        if len(txt)==1:
+            await message.channel.send('なんか言えや')
+        else:
+            await message.channel.send(' '.join(txt[1:]))
 
     elif txt[0]=='/add_me':
-        db0=connect_redis()
+        db0=connect_redis(0)
         if user_id in db0.keys():
             await message.channel.send('既に追加されています')
         else:
-            db_id=get_empty_db_id()
-            if db_id==-1:
-                await message.channel.send('空きがありませんでした…')
-            else:
-                db0.set(user_id,db_id)
-                await message.channel.send('ユーザー"{0}"(id"{1}")を追加しました'.format(user_name,user_id))
+            db0.set(user_id,user_name)
+            await message.channel.send('ユーザー"{0}"(id"{1}")を追加しました'.format(user_name,user_id))
     elif txt[0]=='/delete_me':
-        db0=connect_redis()
+        db0=connect_redis(0)
         if user_id in db0.keys():
+            delete_all_keys(user_id)
             if db0.delete(user_id)==1:
                 await message.channel.send('ユーザー"{0}"(id"{1}")を削除しました'.format(user_name,user_id))
             else:
@@ -95,11 +88,10 @@ async def on_message(message):
             await message.channel.send('追加されていません')
 
     elif txt[0] in personalCommands:
-        db_id=get_db_id(user_id)
-        if db_id==-1:
+        if not connect_redis(0).exists(user_id):
             await message.channel.send('ユーザーとして追加されていません')
             return
-        db=connect_redis(db_id)
+        db1=connect_redis(1)
 
         if txt[0]=='/write':
             if len(txt)==1:
@@ -108,9 +100,10 @@ async def on_message(message):
             if len(txt)==2:
                 await message.channel.send('書き込む値を指定してください')
                 return
+            inner_key=user_id+txt[1]
             key=txt[1]
             val=' '.join(txt[2:])
-            if db.set(key,val):
+            if db1.set(inner_key,val):
                 await message.channel.send('キー"{0}"に"{1}"を書き込みました'.format(key,val))
             else:
                 await message.channel.send('失敗しました')
@@ -118,15 +111,17 @@ async def on_message(message):
             if len(txt)==1:
                 await message.channel.send('キーを指定してください')
                 return
+            inner_key=user_id+txt[1]
             key=txt[1]
-            if db.exists(key):
-                await message.channel.send(db.get(key))
+            if db1.exists(inner_key):
+                await message.channel.send(db1.get(inner_key))
             else:
                 await message.channel.send('キー"{0}"が存在しません'.format(key))
         elif txt[0]=='/read_all':
             res=''
-            for key in db.keys():
-                res+='{0}:{1}\n'.format(key,db.get(key))
+            for inner_key in db1.keys():
+                if inner_key[0:len(user_id)]==user_id:
+                    res+='{0}:{1}\n'.format(inner_key[len(user_id):],db1.get(inner_key))
             if not res:
                 res='empty'
             await message.channel.send(res)
@@ -134,16 +129,17 @@ async def on_message(message):
             if len(txt)==1:
                 await message.channel.send('キーを指定してください')
                 return
+            inner_key=user_id+txt[1]
             key=txt[1]
-            if db.exists(key):
-                if db.delete(key)==1:
+            if db1.exists(inner_key):
+                if db1.delete(inner_key)==1:
                     await message.channel.send('キー"{0}"を削除しました'.format(key))
                 else:
                     await message.channel.send('失敗しました')
             else:
                 await message.channel.send('キー"{0}"が存在しません'.format(key))
         elif txt[0]=='/delete_all':
-            db.flushdb()
+            delete_all_keys(user_id)
             await message.channel.send('全てのキーを削除しました')
     else:
         await message.channel.send('コマンドが見つかりませんでした')
