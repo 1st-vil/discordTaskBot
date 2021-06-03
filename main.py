@@ -8,7 +8,7 @@ dotenv_path=join(dirname(__file__),'.env')
 load_dotenv(dotenv_path)
 TOKEN=os.environ.get("TOKEN")
 
-commands={
+commandsAndDescriptions={
     '/nyan':'にゃーん',
     '/help':'コマンド一覧を表示する',
     '/echo [hoge]':'同じテキストを返す',
@@ -35,15 +35,15 @@ personalCommands=[
 def connect_redis(db_id=0):
     return redis.from_url(url=os.environ.get('REDIS_URL'),decode_responses=True,db=db_id)
 def get_db_id(user_id):
-    conn=connect_redis()
-    keys=conn.keys()
+    db0=connect_redis()
+    keys=db0.keys()
     if user_id in keys:
-        return conn.get(user_id)
+        return db0.get(user_id)
     else:
         return -1
 def get_empty_db_id():
-    conn=connect_redis()
-    ids=[int(conn.get(key)) for key in conn.keys()]
+    db0=connect_redis()
+    ids=[int(db0.get(key)) for key in db0.keys()]
     for i in range(1,16):#合計16個まででやめときます
         if i not in ids:
             return i
@@ -67,7 +67,7 @@ async def on_message(message):
         await message.channel.send('にゃーん')
     elif txt[0]=='/help':
         res=''
-        for command,description in commands.items():
+        for command,description in commandsAndDescriptions.items():
             res+=command+' : '+description+'\n'
         await message.channel.send(res)
     elif txt[0]=='/echo':
