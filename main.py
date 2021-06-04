@@ -61,7 +61,7 @@ async def on_message(message):
     elif txt[0]=='/help':
         res=''
         for command,description in commandsAndDescriptions.items():
-            res+=command+' : '+description+'\n'
+            res+='{0}:{1}\n'.format(command,description)
         await message.channel.send(res)
     elif txt[0]=='/echo':
         if len(txt)==1:
