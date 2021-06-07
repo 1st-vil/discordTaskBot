@@ -16,8 +16,7 @@ async def on_ready():
         res=''
         for title,val in tasks:
             res+='{0} - {1}\n'.format(title,val)
-        if not res:
-            res='empty'
-        await client.get_user(int(user_id)).send('{0}さんの登録している締切間近のタスク一覧:\n'.format(db0.get(user_id))+res)
+        if res:
+            await client.get_user(int(user_id)).send('{0}さんの登録している締切間近のタスク一覧:\n'.format(db0.get(user_id))+res)
         
 client.run(TOKEN)
