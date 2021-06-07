@@ -2,7 +2,7 @@ import os
 import redis
 import re
 import datetime
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta, timezone
 import calendar
 
 def connect_redis(db_id):
@@ -40,7 +40,7 @@ def get_tasks(user_id,fil=lambda x: True):
             title=inner_key[len(user_id):]
             val=db1.get(inner_key)
             y,mo,d,h,mi=token_to_datetime(val)
-            deadline=dt(y,mo,d,h,mi)
+            deadline=dt(y,mo,d,h,mi,tzinfo=timezone(timedelta(hours=9)))
             if fil(deadline):
                 tasks.append((deadline,title,val))
     tasks.sort()

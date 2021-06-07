@@ -1,5 +1,6 @@
+import datetime
 import discord
-from datetime import datetime as dt, timedelta
+from datetime import datetime as dt, timedelta, timezone
 
 from functions import connect_redis, get_tasks
 from info import *
@@ -12,7 +13,7 @@ client=discord.Client(intents=intents)
 async def on_ready():
     db0=connect_redis(0)
     for user_id in db0.keys():
-        tasks=get_tasks(user_id,lambda x: x-dt.now()<timedelta(1))
+        tasks=get_tasks(user_id,lambda x: x-dt.now(timezone(timedelta(hours=9)))<timedelta(1))
         res=''
         for title,val in tasks:
             res+='{0} - {1}\n'.format(title,val)
