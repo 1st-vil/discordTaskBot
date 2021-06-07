@@ -64,7 +64,12 @@ def valid_time_token(s):
     if mi<0 or 59<mi:
         return False
     return True
-
+def token_to_datetime(val):
+    y,mo,d_h_mi=val.split('/')
+    d,h_mi=d_h_mi.split(' ')
+    h,mi=h_mi.split(':')
+    return map(int,[y,mo,d,h,mi])
+    
 #-------------------------#
 
 client=discord.Client()
@@ -146,10 +151,7 @@ async def on_message(message):
                 if inner_key[0:len(user_id)]==user_id:
                     title=inner_key[len(user_id):]
                     val=db1.get(inner_key)
-                    y,mo,d_h_mi=val.split('/')
-                    d,h_mi=d_h_mi.split(' ')
-                    h,mi=h_mi.split(':')
-                    y,mo,d,h,mi=map(int,[y,mo,d,h,mi])
+                    y,mo,d,h,mi=token_to_datetime(val)
                     tasks.append((dt(y,mo,d,h,mi),title,val))
             tasks.sort()
             res=''
@@ -157,7 +159,7 @@ async def on_message(message):
                 res+='{0} - {1}\n'.format(title,val)
             if not res:
                 res='empty'
-            await message.channel.send(res)
+            await message.channel.send('{0}さんの登録しているタスク一覧:\n'.format(user_name)+res)
         elif txt[0]=='/delete':
             if len(txt)==1:
                 await message.channel.send('タスク名を指定してください')
