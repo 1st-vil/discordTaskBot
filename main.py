@@ -1,41 +1,9 @@
 import discord
-import os
-from os.path import join,dirname
-from dotenv import load_dotenv
-import redis
-import re
-import datetime
-from datetime import datetime as dt
-import calendar
 
-dotenv_path=join(dirname(__file__),'.env')
-load_dotenv(dotenv_path)
-TOKEN=os.environ.get("TOKEN")
-
-commandsAndDescriptions={
-    '/nyan':'にゃーん',
-    '/help':'コマンド一覧を表示する',
-    '/echo [hoge]':'同じテキストを返す',
-
-    '/add_me':'メッセージを送ったユーザーを追加する',
-    '/delete_me':'メッセージを送ったユーザーを削除する',
-
-    '/add [y/mo/d] [h:mi] [title]':'y年mo月d日h時mi分締切のタスク"title"を追加する',
-    '/show_all':'追加されている全てのタスクを返す',
-    '/delete [title]':'タスク"title"を削除する',
-    '/delete_all':'全てのタスクを削除する',
-}
-personalCommands=[
-    '/add',
-    '/show_all',
-    '/delete',
-    '/delete_all',
-]
+from functions import *
+from info import *
 
 #-------------------------#
-
-def connect_redis(db_id):
-    return redis.from_url(url=os.environ.get('REDIS_URL'),decode_responses=True,db=db_id)
 
 def delete_all_tasks(user_id):
     db1=connect_redis(1)
@@ -43,32 +11,6 @@ def delete_all_tasks(user_id):
     for inner_key in keys:
         if inner_key[0:len(user_id)]==user_id:
             db1.delete(inner_key)
-
-def valid_date_token(s):
-    if not re.fullmatch(r'\d+/\d+/\d+',s):
-        return False
-    y,mo,d=map(int,s.split('/'))
-    if y<datetime.MINYEAR or datetime.MAXYEAR<y:
-        return False
-    if mo<1 or 12<mo:
-        return False
-    if d<1 or calendar.monthrange(y,mo)[1]<d:
-        return False
-    return True
-def valid_time_token(s):
-    if not re.fullmatch(r'\d+:\d+',s):
-        return False
-    h,mi=map(int,s.split(':'))
-    if h<0 or 23<h:
-        return False
-    if mi<0 or 59<mi:
-        return False
-    return True
-def token_to_datetime(val):
-    y,mo,d_h_mi=val.split('/')
-    d,h_mi=d_h_mi.split(' ')
-    h,mi=h_mi.split(':')
-    return map(int,[y,mo,d,h,mi])
     
 #-------------------------#
 
@@ -87,6 +29,8 @@ async def on_message(message):
     elif txt[0]=='/nyan':
         await message.channel.send('にゃーん')
     elif txt[0]=='/help':
+        if len(txt)>1 and txt[1] in commandsAndDescriptions:
+            return '{0}:{1}\n'.format(txt[1],commandsAndDescriptions[txt[1]])
         res=''
         for command,description in commandsAndDescriptions.items():
             res+='{0}:{1}\n'.format(command,description)
@@ -113,7 +57,7 @@ async def on_message(message):
             else:
                 await message.channel.send('失敗しました')
         else:
-            await message.channel.send('追加されていません')
+            await message.channel.send('ユーザーとして追加されていません')
 
     elif txt[0] in personalCommands:
         if not connect_redis(0).exists(user_id):
@@ -122,23 +66,15 @@ async def on_message(message):
         db1=connect_redis(1)
 
         if txt[0]=='/add':
-            if len(txt)==1:
-                await message.channel.send('締切日を指定してください')
-                return
-            if len(txt)==2:
-                await message.channel.send('締切時刻を指定してください')
-                return
-            if len(txt)==3:
-                await message.channel.send('タスク名を指定してください')
+            if len(txt)<=3:
+                await message.channel.send('不正な入力です')
                 return
             deadline_date=txt[1]
             deadline_time=txt[2]
             title=txt[3]
             inner_key=user_id+title
-            if not valid_date_token(deadline_date):
-                await message.channel.send('不正な締切日です')
-            elif not valid_time_token(deadline_time):
-                await message.channel.send('不正な締切時刻です')
+            if not valid_date_token(deadline_date) or not valid_time_token(deadline_time):
+                await message.channel.send('不正な入力です')
             elif db1.exists(inner_key):
                 await message.channel.send('タスク"{0}"は既に追加されています'.format(title))
             elif db1.set(inner_key,'{0} {1}'.format(deadline_date,deadline_time)):
@@ -146,16 +82,9 @@ async def on_message(message):
             else:
                 await message.channel.send('失敗しました')
         elif txt[0]=='/show_all':
-            tasks=[]
-            for inner_key in db1.keys():
-                if inner_key[0:len(user_id)]==user_id:
-                    title=inner_key[len(user_id):]
-                    val=db1.get(inner_key)
-                    y,mo,d,h,mi=token_to_datetime(val)
-                    tasks.append((dt(y,mo,d,h,mi),title,val))
-            tasks.sort()
+            tasks=get_tasks(user_id)
             res=''
-            for d,title,val in tasks:
+            for title,val in tasks:
                 res+='{0} - {1}\n'.format(title,val)
             if not res:
                 res='empty'
@@ -177,6 +106,6 @@ async def on_message(message):
             delete_all_tasks(user_id)
             await message.channel.send('全てのタスクを削除しました')
     else:
-        await message.channel.send('コマンドが見つかりませんでした')
+        await message.channel.send('コマンドが見つかりませんでした\n/help でコマンド一覧を確認してください')
 
 client.run(TOKEN)
