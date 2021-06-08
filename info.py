@@ -28,6 +28,6 @@ personalCommands=[
 
 notice_time=[
     '07:10',
-    '14:59',
+    '14:50',
     '19:00',
 ]
