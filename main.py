@@ -21,12 +21,12 @@ client=discord.Client(intents=intents)
 
 @tasks.loop(seconds=60)
 async def notice():
-    if dt.now().strftime('%H:%M') in notice_time:
+    cur_jp=dt.now(timezone(timedelta(hours=9)))
+    if cur_jp.strftime('%H:%M') in notice_time:
         db0=connect_redis(0)
         for user_id in db0.keys():
-            tasks=get_tasks(user_id,lambda x: x-dt.now(timezone(timedelta(hours=9)))<timedelta(1))
             res=''
-            for title,val in tasks:
+            for title,val in get_tasks(user_id,lambda x: x-cur_jp<timedelta(1)):
                 res+='{0} - {1}\n'.format(title,val)
             if res:
                 await client.get_user(int(user_id)).send('{0}さんの登録している締切間近のタスク一覧:\n'.format(db0.get(user_id))+res)
