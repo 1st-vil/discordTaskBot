@@ -1,8 +1,9 @@
 import discord
+from discord.ext import tasks
 
 from functions import *
 from info import *
-
+from datetime import datetime as dt
 #-------------------------#
 
 def delete_all_tasks(user_id):
@@ -14,7 +15,25 @@ def delete_all_tasks(user_id):
     
 #-------------------------#
 
-client=discord.Client()
+intents=discord.Intents.default()
+intents.members=True
+client=discord.Client(intents=intents)
+
+@tasks.loop(seconds=60)
+async def notice():
+    if dt.now().strftime('%H:%M') in notice_time:
+        db0=connect_redis(0)
+        for user_id in db0.keys():
+            tasks=get_tasks(user_id,lambda x: x-dt.now(timezone(timedelta(hours=9)))<timedelta(1))
+            res=''
+            for title,val in tasks:
+                res+='{0} - {1}\n'.format(title,val)
+            if res:
+                await client.get_user(int(user_id)).send('{0}さんの登録している締切間近のタスク一覧:\n'.format(db0.get(user_id))+res)
+
+@client.event
+async def on_ready():
+    notice.start()
 
 @client.event
 async def on_message(message):

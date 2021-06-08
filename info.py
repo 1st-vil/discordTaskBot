@@ -25,3 +25,9 @@ personalCommands=[
     '/delete',
     '/delete_all',
 ]
+
+notice_time=[
+    '07:10',
+    '14:50',
+    '19:00',
+]
