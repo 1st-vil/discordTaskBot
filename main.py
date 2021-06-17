@@ -85,10 +85,16 @@ async def on_message(message):
             inner_key=user_id+title
             if not valid_date_token(deadline_date) or not valid_time_token(deadline_time):
                 await message.channel.send('不正な入力です')
+                return
+            deadline_str='{0} {1}'.format(deadline_date,deadline_time)
+            y,mo,d,h,mi=token_to_datetime(deadline_str)
+            deadline=dt(y,mo,d,h,mi,tzinfo=timezone(timedelta(hours=9)))
+            if deadline<dt.now(timezone(timedelta(hours=9))):
+                await message.channel.send('既に締切を過ぎています')
             elif db1.exists(inner_key):
                 await message.channel.send('タスク"{0}"は既に追加されています'.format(title))
-            elif db1.set(inner_key,'{0} {1}'.format(deadline_date,deadline_time)):
-                await message.channel.send('タスク"{0}"を追加しました\n締切日時 {1} {2}'.format(title,deadline_date,deadline_time))
+            elif db1.set(inner_key,deadline_str):
+                await message.channel.send('タスク"{0}"を追加しました\n締切 {1}'.format(title,deadline_str))
             else:
                 await message.channel.send('失敗しました')
         elif txt[0]=='/show_all':
