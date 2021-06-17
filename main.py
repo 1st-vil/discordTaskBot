@@ -92,6 +92,7 @@ async def on_message(message):
             else:
                 await message.channel.send('失敗しました')
         elif txt[0]=='/show_all':
+            delete_tasks(user_id,lambda x: x<dt.now(timezone(timedelta(hours=9))))
             tasks=get_tasks(user_id)
             res=''
             for title,val in tasks:
