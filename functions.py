@@ -45,3 +45,13 @@ def get_tasks(user_id,fil=lambda x: True):
                 tasks.append((deadline,title,val))
     tasks.sort()
     return [tasks[i][1:] for i in range(len(tasks))]
+def delete_tasks(user_id,fil=lambda x: True):
+    db1=connect_redis(1)
+    keys=db1.keys()
+    for inner_key in keys:
+        if inner_key[0:len(user_id)]==user_id:
+            val=db1.get(inner_key)
+            y,mo,d,h,mi=token_to_datetime(val)
+            deadline=dt(y,mo,d,h,mi,tzinfo=timezone(timedelta(hours=9)))
+            if fil(deadline):
+                db1.delete(inner_key)

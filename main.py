@@ -4,16 +4,6 @@ from discord.ext import tasks
 from functions import *
 from info import *
 from datetime import datetime as dt
-#-------------------------#
-
-def delete_all_tasks(user_id):
-    db1=connect_redis(1)
-    keys=db1.keys()
-    for inner_key in keys:
-        if inner_key[0:len(user_id)]==user_id:
-            db1.delete(inner_key)
-    
-#-------------------------#
 
 intents=discord.Intents.default()
 intents.members=True
@@ -25,6 +15,7 @@ async def notice():
     if cur_jp.strftime('%H:%M') in notice_time:
         db0=connect_redis(0)
         for user_id in db0.keys():
+            delete_tasks(user_id,lambda x: x<cur_jp)
             res=''
             for title,val in get_tasks(user_id,lambda x: x-cur_jp<timedelta(1)):
                 res+='{0} - {1}\n'.format(title,val)
@@ -70,7 +61,7 @@ async def on_message(message):
     elif txt[0]=='/delete_me':
         db0=connect_redis(0)
         if user_id in db0.keys():
-            delete_all_tasks(user_id)
+            delete_tasks(user_id)
             if db0.delete(user_id)==1:
                 await message.channel.send('ユーザー"{0}"(id"{1}")を削除しました'.format(user_name,user_id))
             else:
@@ -122,7 +113,7 @@ async def on_message(message):
             else:
                 await message.channel.send('タスク"{0}"が存在しません'.format(title))
         elif txt[0]=='/delete_all':
-            delete_all_tasks(user_id)
+            delete_tasks(user_id)
             await message.channel.send('全てのタスクを削除しました')
     else:
         await message.channel.send('コマンドが見つかりませんでした\n/help でコマンド一覧を確認してください')
